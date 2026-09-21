@@ -1,0 +1,1215 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>要素作業時間 ビデオ起こし</title>
+<style id="appcss">
+  :root{
+    --bg:#121A19; --panel:#1A2422; --panel2:#212D2B; --line:#2E3D3A; --line-soft:#26332F;
+    --fg:#E7EFEC; --fg-dim:#8FA5A0; --fg-faint:#5E7370;
+    --hv-orange:#FF7A1A; --hv-lime:#C9E84B; --danger:#E4595B;
+    --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic Medium","Yu Gothic",Meiryo,"Noto Sans JP",system-ui,sans-serif;
+    --mono:"SFMono-Regular","SF Mono",Consolas,"Roboto Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1500px;margin:0 auto;padding:16px 16px 80px}
+
+  .apptitle{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:4px 0 14px;border-bottom:1px solid var(--line)}
+  .apptitle h1{font-size:20px;margin:0;letter-spacing:.04em;font-weight:700}
+  .apptitle .sub{font-size:12px;color:var(--fg-faint);letter-spacing:.14em}
+  .eyebrow{font-size:11px;letter-spacing:.18em;color:var(--fg-faint);font-weight:700;margin:0 0 8px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:14px}
+  .card > h2{font-size:13px;letter-spacing:.14em;color:var(--fg-dim);margin:0 0 12px;font-weight:700;
+    display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+  .card > h2 .tw{color:var(--hv-orange);font-size:11px;transition:transform .15s}
+  .card.collapsed > h2 .tw{transform:rotate(-90deg)}
+  .card.collapsed > .body{display:none}
+
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--fg-dim);letter-spacing:.06em}
+  input,select,textarea,button{font-family:inherit;font-size:14px}
+  input[type=text],input[type=number],input[type=datetime-local],input[type=date],select,textarea{
+    background:#0D1413;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:7px 9px;width:100%}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--hv-orange);outline-offset:1px;border-color:transparent}
+  textarea{font-family:var(--mono);font-size:12.5px;line-height:1.7;resize:vertical}
+  .grid{display:grid;gap:10px}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:8px 14px;cursor:pointer;transition:.12s}
+  .btn:hover{border-color:var(--hv-orange);color:#fff}
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:2px solid var(--hv-lime);outline-offset:2px}
+  .btn.primary{background:var(--hv-orange);border-color:var(--hv-orange);color:#14100C;font-weight:700}
+  .btn.primary:hover{background:#ff9040}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:var(--danger);border-color:#4a2526}
+  .btn.danger:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .btn.sm{padding:5px 10px;font-size:12.5px}
+  .btn.xs{padding:2px 7px;font-size:12px;line-height:1.5}
+  .btn.on{background:var(--hv-lime);border-color:var(--hv-lime);color:#161B08;font-weight:700}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .hint{font-size:12px;color:var(--fg-faint);line-height:1.7}
+  kbd{font-family:var(--mono);font-size:11px;background:#0D1413;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:var(--hv-lime)}
+
+  #studio{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
+  #studio.solo{grid-template-columns:1fr}
+  @media(max-width:980px){#studio{grid-template-columns:1fr}}
+  #studio > .card{margin-top:0}
+
+  video{width:100%;background:#000;border-radius:8px;display:block}
+  #vidWrap{display:flex;align-items:center;justify-content:center;min-height:0}
+  .drop{border:2px dashed var(--line);border-radius:8px;padding:30px 16px;text-align:center;color:var(--fg-dim);cursor:pointer;aspect-ratio:16/9;width:100%;display:flex;flex-direction:column;justify-content:center;gap:8px}
+  .drop:hover{border-color:var(--hv-orange);color:var(--fg)}
+  .drop.over{border-color:var(--hv-lime);background:#1b2417}
+
+  .resume{border:1px solid var(--hv-orange);background:#2a1a0c;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:none}
+  .resume.show{display:block}
+  .resume .t1{font-size:11px;letter-spacing:.14em;color:var(--hv-orange);font-weight:700}
+  .resume .t2{font-weight:700;margin-top:3px;word-break:break-all}
+  .resume .t3{font-family:var(--mono);font-size:12.5px;color:var(--fg-dim);margin-top:2px}
+
+  #strip{display:none;align-items:center;gap:10px;margin-top:8px;padding:6px 12px;border-radius:7px;
+    background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--line);
+    font-size:14px;white-space:nowrap;overflow:hidden}
+  #strip.rec{border-left-color:var(--hv-lime);background:#1d2718}
+  #strip.wait{border-left-color:var(--hv-orange);background:#2a1e12}
+  #strip .s1{font-weight:700;overflow:hidden;text-overflow:ellipsis}
+  #strip .s2{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--fg-dim);font-size:13px}
+  #strip.rec .s1{color:var(--hv-lime)} #strip.wait .s1{color:var(--hv-orange)}
+
+  .tc{background:#0B100F;border:1px solid var(--line);border-radius:8px;padding:9px 13px;margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tc .lab{font-size:10px;letter-spacing:.16em;color:var(--fg-faint);font-weight:700;display:flex;align-items:center;gap:8px}
+  .tc .val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:clamp(19px,3.2vw,27px);line-height:1.15}
+  .tc .rel .val{color:var(--hv-lime)}
+  .tc .abs .val{color:var(--hv-orange)}
+  .tc .abs.unset .val{color:var(--fg-faint)}
+  .tc .note{font-size:10.5px;color:var(--fg-faint);margin-top:2px}
+  #timeCfg{display:none;background:#0B100F;border:1px solid var(--line);border-radius:8px;padding:12px 13px;margin-top:8px}
+  #timeCfg.show{display:block}
+  input[type=range]{width:100%;accent-color:var(--hv-orange)}
+
+  .ctrlrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .btncut{font-size:16px;font-weight:700;padding:10px 18px;border-radius:8px;cursor:pointer;
+    background:var(--hv-orange);border:1px solid var(--hv-orange);color:#14100C;transition:.12s;white-space:nowrap}
+  .btncut:hover{background:#ff9040}
+  .btncut:active{transform:translateY(1px)}
+  .btncut.start{background:var(--hv-lime);border-color:var(--hv-lime);color:#161B08}
+  .btncut .kk{font-family:var(--mono);font-size:11px;opacity:.65;margin-left:6px;font-weight:700}
+  .sep{width:1px;align-self:stretch;background:var(--line);margin:0 3px}
+
+  body.popbody{padding:0;height:100vh;overflow:hidden}
+  body.popbody #videoCard{margin:0;height:100vh;border:0;border-radius:0;padding:8px 10px 10px;display:flex;flex-direction:column;min-height:0}
+  body.popbody #videoCard > h2{margin:0 0 6px;flex:0 0 auto}
+  body.popbody #videoCard > .body{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  body.popbody #vidWrap{flex:1 1 auto;min-height:80px}
+  body.popbody video{height:100%;width:100%;object-fit:contain;border-radius:6px}
+  body.popbody .drop{aspect-ratio:auto;height:100%}
+  body.popbody #strip{display:flex;flex:0 0 auto}
+  body.popbody .tc,body.popbody .ctrls,body.popbody .resume,body.popbody #timeCfg{flex:0 0 auto}
+  body.popbody #timeCfg{max-height:34vh;overflow:auto}
+
+  .live{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:9px 12px;background:var(--panel2);margin-bottom:10px}
+  .live.rec{border-left-color:var(--hv-lime);background:#1d2718}
+  .live.wait{border-left-color:var(--hv-orange);background:#2a1e12}
+  .live .t1{font-size:11px;color:var(--fg-dim);letter-spacing:.08em}
+  .live .t2{font-size:16px;font-weight:700;margin-top:1px}
+  .live .t3{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--fg-dim);margin-top:1px}
+
+  #codeArea{border:1px solid var(--line);border-radius:8px;background:#0F1615;padding:8px;overflow-x:auto}
+  .hidden{display:none!important}
+  .colwrap{display:flex;gap:10px;align-items:flex-start;min-width:min-content}
+  .unitcol{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .unitcol+.unitcol{border-left:1px solid var(--line-soft);padding-left:10px}
+  .unitcol .uh{font-size:10.5px;letter-spacing:.08em;color:var(--fg-faint);font-weight:700;
+    padding:0 2px 3px;border-bottom:1px solid var(--line-soft);margin-bottom:2px;white-space:nowrap}
+  .code{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:5px;
+    padding:3px 8px 3px 5px;cursor:pointer;font-size:13.5px;line-height:1.5;transition:.1s;
+    display:flex;align-items:center;gap:5px;white-space:nowrap;text-align:left}
+  .code:hover{border-color:var(--hv-orange)}
+  .code:focus-visible{outline:2px solid var(--hv-lime);outline-offset:1px}
+  .code .k{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--hv-orange);min-width:13px;text-align:center;flex:0 0 auto}
+  .code.active{background:var(--hv-lime);border-color:var(--hv-lime);color:#161B08;font-weight:700}
+  .code.active .k{color:#3d4a10}
+
+  .attr{position:relative}
+  .attr input{padding-right:24px}
+  .attr .clr{position:absolute;right:4px;bottom:5px;background:none;border:none;color:var(--fg-faint);
+    cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;line-height:1}
+  .attr .clr:hover{color:var(--danger);background:#2b1c1d}
+
+  .ubox{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:10px;background:var(--panel2)}
+  .ubox .uhead{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+  .ubox .uhead input{font-weight:700;font-size:14px}
+  .ebox{display:flex;flex-wrap:wrap;gap:6px}
+  .echip{display:flex;align-items:center;gap:3px;background:#0D1413;border:1px solid var(--line);border-radius:6px;padding:2px 3px 2px 6px}
+  .echip.dup{border-color:var(--danger);background:#2b1c1d}
+  .echip input{border:none;background:transparent;padding:3px 2px;width:8.5em;font-size:13px}
+  .echip input:focus{outline:none;border-bottom:1px solid var(--hv-orange)}
+  .echip .x{background:none;border:none;color:var(--fg-faint);cursor:pointer;padding:0 4px;font-size:13px;border-radius:4px}
+  .echip .x:hover{color:var(--danger);background:#2b1c1d}
+  .dupwarn{color:var(--danger);font-size:12px;margin-bottom:8px;display:none}
+  .dupwarn.show{display:block}
+
+  .tblwrap{overflow:auto;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border-bottom:1px solid var(--line-soft);padding:5px 8px;text-align:left;white-space:nowrap}
+  thead th{position:sticky;top:0;background:var(--panel2);z-index:2;font-size:10.5px;letter-spacing:.1em;color:var(--fg-dim);font-weight:700;border-bottom:1px solid var(--line)}
+  tbody tr:hover{background:#1e2b28}
+  tbody tr.open{background:#1b2417}
+  tbody tr.target{box-shadow:inset 3px 0 0 var(--hv-orange)}
+  tbody tr.nolabel td.lab{color:var(--hv-orange)}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+  td.ed{cursor:pointer}
+  td.ed:hover{background:#26332f;box-shadow:inset 0 0 0 1px var(--line)}
+  td input,td select{padding:2px 4px;font-size:13px;border-radius:3px}
+  .rowbtn{background:none;border:none;color:var(--fg-faint);cursor:pointer;padding:2px 5px;font-size:14px;border-radius:4px}
+  .rowbtn:hover{color:var(--danger);background:#2b1c1d}
+  .seek{color:var(--hv-lime);cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+  .sum td.num{color:var(--hv-lime)}
+  .bar{height:6px;background:var(--hv-orange);border-radius:3px;min-width:2px}
+  #rowsN{width:64px}
+
+  .cellbox{position:relative}
+  .sugg{position:fixed;z-index:9999;background:#0D1413;border:1px solid var(--hv-orange);
+    border-radius:6px;min-width:180px;max-height:240px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.6)}
+  .sugg div{padding:4px 9px;cursor:pointer;font-size:13px;white-space:nowrap}
+  .sugg div .g{color:var(--fg-faint);font-size:11px;margin-left:8px}
+  .sugg div.on{background:var(--hv-orange);color:#14100C}
+  .sugg div.on .g{color:#4a2f10}
+  .sugg .hd{padding:3px 9px;font-size:10px;letter-spacing:.1em;color:var(--fg-faint);
+    background:var(--panel2);cursor:default;position:sticky;top:0}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--hv-lime);color:#161B08;padding:9px 18px;border-radius:20px;font-weight:700;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:50}
+  .toast.show{opacity:1}
+  .toast.warn{background:var(--danger);color:#fff}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <div class="apptitle">
+    <h1>要素作業時間 ビデオ起こし</h1>
+    <span class="sub">WORK STUDY VIDEO CODER</span>
+  </div>
+
+  <div class="card collapsed" id="cardHead">
+    <h2 onclick="toggleCard('cardHead')"><span class="tw">▼</span>調査条件</h2>
+    <div class="body">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <label class="f">調査日<input type="date" id="h_date"></label>
+        <label class="f">調査地名<input type="text" id="h_site" placeholder="○○国有林"></label>
+        <label class="f">林小班<input type="text" id="h_stand" placeholder="123 い"></label>
+        <label class="f">機械<input type="text" id="h_machine" placeholder="型式・機番"></label>
+        <label class="f">操作者<input type="text" id="h_operator"></label>
+        <label class="f">記録者<input type="text" id="h_recorder"></label>
+        <label class="f">天候<input type="text" id="h_weather"></label>
+        <label class="f">備考<input type="text" id="h_note"></label>
+      </div>
+    </div>
+  </div>
+
+  <div id="studio">
+
+    <div class="card" id="videoCard">
+      <h2 style="cursor:default">
+        <span class="tw" style="visibility:hidden">▼</span>動画
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn xs" id="btnPop">別窓へ切り出す</button>
+          <button class="btn xs primary" id="btnUnpop" style="display:none">本体に戻す</button>
+          <button class="btn xs ghost" id="btnPick">動画を選ぶ</button>
+        </span>
+      </h2>
+      <div class="body">
+
+        <div class="resume" id="resumeBar">
+          <div class="t1">前回の続き</div>
+          <div class="t2" id="resumeName">—</div>
+          <div class="t3" id="resumePos">—</div>
+          <button class="btn sm primary" id="btnResume" style="margin-top:8px">同じ動画を選んで続きから</button>
+        </div>
+
+        <div id="vidWrap">
+          <div id="drop" class="drop">
+            <div style="font-size:26px">▶</div>
+            <div><strong>動画ファイルを選択</strong>（またはここへドラッグ）</div>
+            <div class="hint">ファイルはPC内で再生されます。アップロードはされません。<br>対応形式：MP4 / MOV / WebM（.mpg は再生できません）</div>
+          </div>
+          <video id="vid" controls style="display:none"></video>
+        </div>
+        <input type="file" id="fileIn" accept="video/*" style="display:none">
+
+        <div id="strip">
+          <span class="s1" id="stripName">— 未開始 —</span>
+          <span class="s2" id="stripTime"></span>
+        </div>
+
+        <div class="tc">
+          <div class="cell rel">
+            <div class="lab">動画内経過時間</div>
+            <div class="val" id="tcRel">0:00:00.0</div>
+            <div class="note" id="tcRelSec">0.0 s</div>
+          </div>
+          <div class="cell abs unset" id="tcAbsBox">
+            <div class="lab">実時刻（GNSS照合用）<button class="btn xs" id="btnTimeCfg">設定</button></div>
+            <div class="val" id="tcAbs">--:--:--</div>
+            <div class="note" id="tcAbsNote">動画開始時刻が未設定</div>
+          </div>
+        </div>
+
+        <div id="timeCfg">
+          <div class="eyebrow">方法 1 ── 同期点から逆算　<span style="color:var(--hv-orange)">推奨</span></div>
+          <div class="hint" style="margin-bottom:6px">動画内で<strong>実時刻が分かる瞬間</strong>で一時停止し、その実時刻を入れてください。</div>
+          <div class="row">
+            <label class="f" style="flex:1;min-width:170px">その瞬間の実時刻<input type="datetime-local" id="syncInput" step="1"></label>
+            <button class="btn primary" id="btnApplySync">現在位置に合わせる</button>
+          </div>
+          <div class="hint" id="syncNow" style="margin-top:6px"></div>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line-soft)">
+            <div class="eyebrow">方法 2 ── 直接入力</div>
+            <label class="f" style="max-width:230px">動画の撮影開始時刻<input type="datetime-local" id="baseInput" step="1"></label>
+          </div>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line-soft)">
+            <div class="eyebrow">方法 3 ── ファイル更新日時から逆算（概算）</div>
+            <div class="hint" id="mtimeInfo">動画未読込</div>
+            <button class="btn sm" style="margin-top:6px" id="btnApplyMtime">更新日時−動画長 を開始時刻にする</button>
+          </div>
+          <div class="row" style="margin-top:12px"><button class="btn sm ghost" id="btnTimeClose">閉じる</button></div>
+        </div>
+
+        <div class="ctrls">
+          <div style="margin-top:8px"><input type="range" id="seekbar" min="0" max="100" step="0.1" value="0"></div>
+          <div class="ctrlrow">
+            <button class="btn sm stp" data-d="-10">◀◀10s</button>
+            <button class="btn sm stp" data-d="-1">◀1s</button>
+            <button class="btn sm stp" data-d="-0.1">◀0.1</button>
+            <button class="btn primary" id="btnPlay">▶ 再生</button>
+            <button class="btn sm stp" data-d="0.1">0.1▶</button>
+            <button class="btn sm stp" data-d="1">1s▶</button>
+            <button class="btn sm stp" data-d="10">10s▶▶</button>
+            <span class="sep"></span>
+            <button class="btncut start" id="btnCut">▶ 観測開始<span class="kk">Enter</span></button>
+            <button class="btn sm" id="btnEnd">観測終了</button>
+            <button class="btn sm danger" id="btnCancel">取消</button>
+          </div>
+          <div class="ctrlrow">
+            <span class="hint">速度</span>
+            <button class="btn sm spd" data-s="0.25">0.25×</button>
+            <button class="btn sm spd" data-s="0.5">0.5×</button>
+            <button class="btn sm spd on" data-s="1">1×</button>
+            <button class="btn sm spd" data-s="1.5">1.5×</button>
+            <button class="btn sm spd" data-s="2">2×</button>
+            <button class="btn sm spd" data-s="4">4×</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="recCard">
+      <h2 style="cursor:default">
+        <span class="tw" style="visibility:hidden">▼</span>記録
+        <span style="margin-left:auto"><button class="btn xs on" id="btnShowCodes">入力パネル：表示</button></span>
+      </h2>
+      <div class="body">
+
+        <div class="live" id="live">
+          <div class="t1">状態</div>
+          <div class="t2" id="liveName">— 未開始 —</div>
+          <div class="t3" id="liveTime">動画側の［観測開始］または Enter で計測が始まります</div>
+        </div>
+
+        <div class="row" style="margin-bottom:8px">
+          <label class="f" style="flex:1;min-width:170px">作業システム<select id="sysSel"></select></label>
+          <button class="btn sm ghost" id="btnEditMst">作業区分を編集</button>
+        </div>
+
+        <div id="codeArea"></div>
+
+        <div class="grid" id="attrGrid" style="grid-template-columns:repeat(auto-fit,minmax(115px,1fr));margin-top:10px">
+          <label class="f attr">処理対象1<input type="text" id="a_t1"><button class="clr" data-clr="a_t1" title="消去">✕</button></label>
+          <label class="f attr">処理対象2<input type="text" id="a_t2"><button class="clr" data-clr="a_t2" title="消去">✕</button></label>
+          <label class="f attr">処理対象3<input type="text" id="a_t3"><button class="clr" data-clr="a_t3" title="消去">✕</button></label>
+          <label class="f attr" style="grid-column:span 2">コメント<input type="text" id="a_cmt"><button class="clr" data-clr="a_cmt" title="消去">✕</button></label>
+        </div>
+        <div class="row" id="attrRow" style="margin-top:8px">
+          <button class="btn sm danger" id="btnClrAll">全項目を消去</button>
+          <button class="btn sm on" id="btnKeep">確定後も属性を保持：ON</button>
+        </div>
+
+        <div class="hint" style="margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px">
+          <kbd>Enter</kbd> 区切る　<kbd>Space</kbd> 再生/停止　<kbd>←</kbd><kbd>→</kbd> ±1秒　<kbd>Shift</kbd>+<kbd>←→</kbd> ±0.1秒　<kbd>Alt</kbd>+<kbd>←→</kbd> ±10秒　<kbd>Esc</kbd> 観測終了<br>
+          <kbd>1</kbd>…<kbd>0</kbd><kbd>Q</kbd><kbd>W</kbd>… 要素作業を入力（別窓にフォーカスがあっても効きます）
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="cardTbl">
+    <h2 onclick="toggleCard('cardTbl')"><span class="tw">▼</span>記録一覧 <span id="cnt" style="color:var(--hv-orange);letter-spacing:0">0件</span></h2>
+    <div class="body">
+      <div class="row" style="margin-bottom:10px">
+        <span class="hint">表示行数</span>
+        <button class="btn sm rowsBtn" data-n="5">5行</button>
+        <button class="btn sm rowsBtn" data-n="20">20行</button>
+        <input type="number" id="rowsN" min="2" max="200" step="1" title="行数を直接指定">
+        <span class="sep"></span>
+        <button class="btn sm" onclick="sortRows()">開始時間で並べ替え</button>
+        <button class="btn sm danger" onclick="clearAll()">全消去</button>
+      </div>
+      <div class="hint" style="margin-bottom:8px">
+        単位作業・要素作業のセルは打ち込むと候補が絞り込まれます。<kbd>Tab</kbd> または文末で <kbd>→</kbd> で右のセルへ、文頭で <kbd>←</kbd> で左のセルへ移動します。No.クリックでその位置へシーク。
+      </div>
+      <div class="tblwrap" id="tblwrap">
+        <table id="tbl">
+          <thead><tr>
+            <th>No</th><th>単位作業</th><th>要素作業</th><th>対象1</th><th>対象2</th><th>対象3</th><th>コメント</th>
+            <th>開始(相対)</th><th>終了(相対)</th><th>開始時刻</th><th>終了時刻</th>
+            <th>所要(s)</th><th></th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="cardSum">
+    <h2 onclick="toggleCard('cardSum')"><span class="tw">▼</span>集計</h2>
+    <div class="body">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+        <div>
+          <div class="eyebrow">単位作業別</div>
+          <div class="tblwrap" style="max-height:340px"><table class="sum"><thead><tr>
+            <th>単位作業</th><th>回数</th><th>合計(s)</th><th>平均(s)</th><th>比率</th><th style="width:80px"></th>
+          </tr></thead><tbody id="sumUnit"></tbody></table></div>
+        </div>
+        <div>
+          <div class="eyebrow">要素作業別</div>
+          <div class="tblwrap" style="max-height:340px"><table class="sum"><thead><tr>
+            <th>単位作業</th><th>要素作業</th><th>回数</th><th>合計(s)</th><th>平均(s)</th><th>比率</th><th style="width:80px"></th>
+          </tr></thead><tbody id="sumElem"></tbody></table></div>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:10px" id="sumTotal"></div>
+    </div>
+  </div>
+
+  <div class="card" id="cardOut">
+    <h2 onclick="toggleCard('cardOut')"><span class="tw">▼</span>出力・保存</h2>
+    <div class="body">
+      <div class="row">
+        <button class="btn primary" onclick="expDetail()">明細CSV（Excel用）</button>
+        <button class="btn" onclick="expSummary()">集計CSV</button>
+        <button class="btn" onclick="saveJson()">作業ファイルを保存(.json)</button>
+        <button class="btn" onclick="document.getElementById('jsonIn').click()">作業ファイルを読込</button>
+        <input type="file" id="jsonIn" accept=".json" style="display:none">
+      </div>
+      <div class="hint" style="margin-top:8px">
+        明細CSVは調査条件を各行に展開してあります（UTF-8 BOM付き）。<br>
+        作業ファイルは動画と同じフォルダに保存しておくと再開が楽です。<br>
+        <span id="autoStat"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card collapsed" id="cardMst">
+    <h2 onclick="toggleCard('cardMst')"><span class="tw">▼</span>作業区分の編集（作業システム／単位作業／要素作業）</h2>
+    <div class="body">
+      <div class="row" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line-soft)">
+        <label class="f" style="flex:1;min-width:200px">編集する作業システム<select id="mstSysSel"></select></label>
+        <button class="btn sm primary" onclick="sysAdd()">＋ 新規システム</button>
+        <button class="btn sm" onclick="sysDup()">複製</button>
+        <button class="btn sm" onclick="sysUp()">↑</button>
+        <button class="btn sm" onclick="sysDown()">↓</button>
+        <button class="btn sm danger" onclick="sysDel()">システム削除</button>
+      </div>
+      <div class="hint" style="margin:-4px 0 12px">現場ごとに区分が違う場合は、近いシステムを<strong>複製</strong>して名前を変え、要らない要素を消すのが早いです。</div>
+      <label class="f" style="max-width:340px;margin-bottom:14px">システム名<input type="text" id="mstSysName"></label>
+      <div class="dupwarn" id="dupWarn"></div>
+      <div id="mstUnits"></div>
+      <button class="btn primary" onclick="unitAdd()">＋ 単位作業を追加</button>
+
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line-soft)">
+        <div class="eyebrow">一括編集（Excelから貼り付け）</div>
+        <div class="hint" style="margin-bottom:6px">1行 =「作業システム ＜タブ/カンマ＞ 単位作業 ＜タブ/カンマ＞ 要素作業」。<strong>全システムを置き換えます。</strong></div>
+        <textarea id="mstText" rows="8"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm" onclick="loadTsv()">現在の内容を書き出す</button>
+          <button class="btn sm primary" onclick="applyTsv()">テキストを反映（全置換）</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">
+        <button class="btn primary" onclick="saveMasterCsv()">作業区分を保存（CSV）</button>
+        <button class="btn" onclick="document.getElementById('mstCsvIn').click()">CSVを読込</button>
+        <input type="file" id="mstCsvIn" accept=".csv,.txt" style="display:none">
+        <span class="sep"></span>
+        <button class="btn sm" onclick="saveMaster()">JSONで保存</button>
+        <button class="btn sm" onclick="document.getElementById('mstIn').click()">JSONを読込</button>
+        <input type="file" id="mstIn" accept=".json" style="display:none">
+        <button class="btn ghost danger sm" onclick="resetMaster()">初期値に戻す</button>
+      </div>
+      <div class="hint" style="margin-top:6px">CSVは「作業システム, 単位作業, 要素作業」の3列。Excelでそのまま開いて編集できます。</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 初期マスタ ================= */
+const DEFAULT_SYSTEMS=[
+ {name:"チェーンソー伐木造材",units:[
+   {name:"伐木",elems:["確認","受け口伐り","追い口伐り","くさび打ち","退避","かかり木処理"]},
+   {name:"造材",elems:["枝払い","造材","小移動"]},
+   {name:"集積",elems:["材集積","集積小移動"]},
+   {name:"移動",elems:["移動"]},
+   {name:"余裕時間",elems:["休憩","待ち"]},
+   {name:"付帯作業",elems:["給油","目立て","打ち合わせ","その他"]}]}
+];
+const KEYSEQ="1234567890QWERTYUIOPASDFGHJKLZXCVBNM".split("");
+const AK=['a_t1','a_t2','a_t3','a_cmt'];
+const AF={a_t1:'t1',a_t2:'t2',a_t3:'t3',a_cmt:'cmt'};
+const NAVK=['unit','elem','t1','t2','t3','cmt'];   /* セル間移動の順序 */
+
+/* ================= 状態 ================= */
+let systems=clone(DEFAULT_SYSTEMS);
+let rows=[], target=-1, baseMs=null, keepAttr=true, videoMtime=null, keymap={}, mstIdx=0;
+let lastVideoName=null, lastPos=0, resumePending=null;
+let popWin=null, popGeom={w:1000,h:760,x:null,y:null};
+let showCodes=true, rowsShown=5;
+
+const $=id=>document.getElementById(id);
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toggleCard(id){$(id).classList.toggle('collapsed');}
+
+const studio=$('studio'), videoCard=$('videoCard');
+const R={};
+['vid','drop','vidWrap','fileIn','tcRel','tcRelSec','tcAbsBox','tcAbs','tcAbsNote','seekbar','btnPlay',
+ 'btnPop','btnUnpop','btnPick','resumeBar','resumeName','resumePos','btnResume',
+ 'strip','stripName','stripTime','btnTimeCfg','timeCfg','syncInput','baseInput','syncNow','mtimeInfo',
+ 'btnApplySync','btnApplyMtime','btnTimeClose',
+ 'live','liveName','liveTime','sysSel','codeArea','a_t1','a_t2','a_t3','a_cmt',
+ 'btnKeep','btnClrAll','btnShowCodes','btnCut','btnEnd','btnCancel','btnEditMst',
+ 'tblwrap','rowsN','attrGrid','attrRow'].forEach(id=>R[id]=document.getElementById(id));
+const vid=R.vid;
+
+function toast(m,w){
+  const t=$('toast');t.textContent=m;t.className='toast show'+(w?' warn':'');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.className='toast',1800);
+  if(popWin&&!popWin.closed){
+    let pt=popWin.document.getElementById('ptoast');
+    if(!pt){pt=popWin.document.createElement('div');pt.id='ptoast';popWin.document.body.appendChild(pt);}
+    pt.textContent=m;pt.className='toast show'+(w?' warn':'');
+    clearTimeout(pt._h);pt._h=setTimeout(()=>pt.className='toast',1800);
+  }
+}
+
+/* ================= 時間 ================= */
+function fmtRel(s){if(s==null||isNaN(s))return"";const n=s<0;s=Math.abs(s);
+  const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return (n?"-":"")+h+":"+String(m).padStart(2,'0')+":"+x.toFixed(1).padStart(4,'0');}
+function parseRel(str){if(str==null)return null;str=String(str).trim();if(!str)return null;
+  if(/^-?\d+(\.\d+)?$/.test(str))return parseFloat(str);
+  const p=str.split(':').map(parseFloat);if(p.some(isNaN))return null;
+  if(p.length===3)return p[0]*3600+p[1]*60+p[2];
+  if(p.length===2)return p[0]*60+p[1];return p[0];}
+function absOf(s){if(baseMs==null||s==null||isNaN(s))return null;return new Date(baseMs+s*1000);}
+function p2(n){return String(n).padStart(2,'0');}
+function fmtClock(d){return d?p2(d.getHours())+":"+p2(d.getMinutes())+":"+p2(d.getSeconds()):"";}
+function fmtClockMs(d){return d?fmtClock(d)+"."+Math.floor(d.getMilliseconds()/100):"";}
+function fmtDateTime(d){return d?d.getFullYear()+"/"+p2(d.getMonth()+1)+"/"+p2(d.getDate())+" "+fmtClock(d):"";}
+function localIso(d){return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes())+":"+p2(d.getSeconds());}
+function stamp(){const d=new Date();return d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'_'+p2(d.getHours())+p2(d.getMinutes());}
+function nowT(){return vid.src?vid.currentTime:0;}
+
+/* ================= 記録 ================= */
+function openIdx(){for(let i=rows.length-1;i>=0;i--)if(rows[i].end==null)return i;return -1;}
+function clearFields(){AK.forEach(k=>R[k].value='');}
+function loadFields(r){AK.forEach(k=>R[k].value=r?(r[AF[k]]||''):'');}
+function blank(){return {t1:'',t2:'',t3:'',cmt:''};}
+function newRow(t){return Object.assign({sys:R.sysSel.value,unit:'',elem:'',start:t,end:null},blank());}
+
+function closeRow(i,t){
+  /* 引き継ぎ元：直前に確定した区間。無ければ入力欄の値 */
+  const src=(target>=0&&target!==i&&rows[target])?rows[target]
+           :{t1:R.a_t1.value,t2:R.a_t2.value,t3:R.a_t3.value};
+  rows[i].end=t;
+  if(keepAttr)['t1','t2','t3'].forEach(k=>{if(!rows[i][k])rows[i][k]=src[k]||'';});
+  else Object.assign(rows[i],blank());
+  target=i;loadFields(rows[i]);
+}
+function cut(){
+  if(!vid.src){toast('先に動画を読み込んでください',1);return;}
+  const t=nowT(),oi=openIdx();
+  if(oi<0){rows.push(newRow(t));target=-1;}
+  else{
+    if(t-rows[oi].start<=0.05){toast('区間が短すぎます',1);return;}
+    closeRow(oi,t);rows.push(newRow(t));
+  }
+  refresh();scrollToTarget();focusAfterCut();
+}
+function focusAfterCut(){
+  if(target<0)return;
+  if(showCodes){
+    const b=R.codeArea.querySelector('.code');
+    if(b&&R.codeArea.ownerDocument===document){try{b.focus({preventScroll:true});}catch(e){}}
+  }else{
+    const td=$('tbody').querySelector(`tr.target td[data-k="elem"]`);
+    if(td)editCell(td);
+  }
+}
+function endObs(){
+  const oi=openIdx();
+  if(oi<0){toast('開いている区間がありません',1);return;}
+  const t=nowT();
+  if(t-rows[oi].start<=0.05){rows.splice(oi,1);target=rows.length-1;}
+  else closeRow(oi,t);
+  refresh();
+}
+function cancelSeg(){
+  const oi=openIdx();
+  if(oi<0){toast('開いている区間がありません',1);return;}
+  rows.splice(oi,1);target=Math.min(target,rows.length-1);refresh();toast('区間を取り消しました');
+}
+function label(unit,elem){
+  if(target<0||!rows[target]){toast('入力先の区間がありません。まず［区切る］を押してください',1);return;}
+  rows[target].unit=unit;rows[target].elem=elem;refresh();
+}
+function setTarget(i){if(i===target)return;target=i;loadFields(rows[i]);}
+function refresh(){renderCodes();renderLive();renderTable();renderSummary();autosave();}
+function scrollToTarget(){const tr=$('tbody').querySelector('tr.target');if(tr&&tr.scrollIntoView)tr.scrollIntoView({block:'nearest'});}
+
+AK.forEach(k=>R[k].addEventListener('input',()=>{
+  if(target<0||!rows[target])return;
+  rows[target][AF[k]]=R[k].value;renderTable();autosave();}));
+document.querySelectorAll('[data-clr]').forEach(b=>b.onclick=e=>{
+  e.preventDefault();
+  const id=b.dataset.clr;R[id].value='';
+  if(target>=0&&rows[target]){rows[target][AF[id]]='';renderTable();autosave();}
+  R[id].focus();});
+R.btnClrAll.onclick=()=>{
+  clearFields();
+  if(target>=0&&rows[target]){Object.assign(rows[target],blank());renderTable();autosave();}
+  toast('属性を消去しました');};
+
+/* ================= コードボタン ================= */
+function curSys(){return systems.find(s=>s.name===R.sysSel.value)||systems[0];}
+function buildSysSel(){const prev=R.sysSel.value;
+  R.sysSel.innerHTML=systems.map(s=>`<option>${esc(s.name)}</option>`).join('');
+  if(systems.some(s=>s.name===prev))R.sysSel.value=prev;}
+function renderCodes(){
+  R.codeArea.classList.toggle('hidden',!showCodes);
+  R.attrGrid.classList.toggle('hidden',!showCodes);
+  R.attrRow.classList.toggle('hidden',!showCodes);
+  if(!showCodes){keymapBuild();return;}
+  const sys=curSys();keymap={};let ki=0;
+  if(!sys){R.codeArea.innerHTML='<div class="hint">作業システムがありません。</div>';return;}
+  const t=rows[target];
+  let html='<div class="colwrap">';
+  sys.units.forEach(u=>{
+    if(!u.elems.length)return;
+    html+=`<div class="unitcol"><div class="uh">${esc(u.name)}</div>`;
+    u.elems.forEach(e=>{
+      const k=ki<KEYSEQ.length?KEYSEQ[ki]:null;ki++;
+      if(k)keymap[k]={unit:u.name,elem:e};
+      const act=t&&t.unit===u.name&&t.elem===e?' active':'';
+      html+=`<button class="code${act}" data-u="${esc(u.name)}" data-e="${esc(e)}">`+(k?`<span class="k">${k}</span>`:'')+esc(e)+`</button>`;
+    });
+    html+=`</div>`;
+  });
+  html+='</div>';
+  R.codeArea.innerHTML=html;
+  R.codeArea.querySelectorAll('.code').forEach(b=>b.onclick=()=>label(b.dataset.u,b.dataset.e));
+}
+function keymapBuild(){
+  const sys=curSys();keymap={};let ki=0;
+  if(!sys)return;
+  sys.units.forEach(u=>u.elems.forEach(e=>{
+    const k=ki<KEYSEQ.length?KEYSEQ[ki]:null;ki++;
+    if(k)keymap[k]={unit:u.name,elem:e};}));
+}
+R.btnShowCodes.onclick=()=>{
+  showCodes=!showCodes;
+  R.btnShowCodes.textContent='入力パネル：'+(showCodes?'表示':'非表示');
+  R.btnShowCodes.classList.toggle('on',showCodes);
+  renderCodes();autosave();};
+
+function renderLive(){
+  const oi=openIdx();
+  let cls='',name='',time='',sName='',sTime='';
+  if(target>=0&&rows[target]&&!rows[target].elem){
+    const r=rows[target];cls='wait';
+    name='▼ 要素作業を入力してください（No.'+(target+1)+'）';
+    time=fmtRel(r.start)+' 〜 '+fmtRel(r.end)+'　'+(r.end-r.start).toFixed(1)+' s';
+    sName='▼ 要素作業を入力  No.'+(target+1);
+    sTime=fmtRel(r.start)+'〜'+fmtRel(r.end)+'  '+(r.end-r.start).toFixed(1)+'s';
+  }else if(oi>=0){
+    const r=rows[oi],a=absOf(r.start);cls='rec';
+    name='計測中（No.'+(oi+1)+'）';
+    time='開始 '+fmtRel(r.start)+(a?'（'+fmtClock(a)+'）':'')+'　経過 '+Math.max(0,nowT()-r.start).toFixed(1)+' s';
+    sName='■ 計測中  No.'+(oi+1)+(target>=0&&rows[target]&&rows[target].elem?'　前＝'+rows[target].elem:'');
+    sTime='開始 '+fmtRel(r.start)+'  経過 '+Math.max(0,nowT()-r.start).toFixed(1)+'s';
+  }else{
+    name='— 未開始 —';time='動画側の［観測開始］または Enter で計測が始まります';
+    sName='— 未開始 —';sTime='Enter で観測開始';
+  }
+  R.live.className='live'+(cls?' '+cls:'');
+  R.liveName.textContent=name;R.liveTime.textContent=time;
+  R.strip.className=cls;R.stripName.textContent=sName;R.stripTime.textContent=sTime;
+  const noOpen=oi<0;
+  R.btnCut.classList.toggle('start',noOpen);
+  R.btnCut.innerHTML=(noOpen?'▶ 観測開始':'■ ここで区切る')+'<span class="kk">Enter</span>';
+}
+
+/* ================= 表 ================= */
+function applyRowsHeight(){
+  R.tblwrap.style.maxHeight=(rowsShown*27+34)+'px';
+  R.rowsN.value=rowsShown;
+  document.querySelectorAll('.rowsBtn').forEach(b=>b.classList.toggle('on',+b.dataset.n===rowsShown));
+}
+document.querySelectorAll('.rowsBtn').forEach(b=>b.onclick=()=>{rowsShown=+b.dataset.n;applyRowsHeight();autosave();});
+R.rowsN.onchange=()=>{const v=Math.max(2,Math.min(200,+R.rowsN.value||5));rowsShown=v;applyRowsHeight();autosave();};
+
+function renderTable(){
+  const tb=$('tbody');tb.innerHTML='';
+  rows.forEach((r,i)=>{
+    const tr=document.createElement('tr'),cls=[];
+    if(r.end==null)cls.push('open'); if(i===target)cls.push('target');
+    if(!r.elem&&r.end!=null)cls.push('nolabel');
+    tr.className=cls.join(' ');
+    tr.innerHTML=
+      `<td class="num"><span class="seek" data-seek="${r.start}">${i+1}</span></td>`+
+      `<td class="ed lab" data-i="${i}" data-k="unit">${esc(r.unit)||'—'}</td>`+
+      `<td class="ed lab" data-i="${i}" data-k="elem">${esc(r.elem)||'—'}</td>`+
+      `<td class="ed" data-i="${i}" data-k="t1" data-t="text">${esc(r.t1)}</td>`+
+      `<td class="ed" data-i="${i}" data-k="t2" data-t="text">${esc(r.t2)}</td>`+
+      `<td class="ed" data-i="${i}" data-k="t3" data-t="text">${esc(r.t3)}</td>`+
+      `<td class="ed" data-i="${i}" data-k="cmt" data-t="text">${esc(r.cmt)}</td>`+
+      `<td class="ed num" data-i="${i}" data-k="start" data-t="time">${fmtRel(r.start)}</td>`+
+      `<td class="ed num" data-i="${i}" data-k="end" data-t="time">${r.end==null?'（計測中）':fmtRel(r.end)}</td>`+
+      `<td class="num" style="color:var(--hv-orange)">${fmtClockMs(absOf(r.start))}</td>`+
+      `<td class="num" style="color:var(--hv-orange)">${r.end==null?'':fmtClockMs(absOf(r.end))}</td>`+
+      `<td class="num" style="color:var(--hv-lime)">${r.end==null?'':(r.end-r.start).toFixed(1)}</td>`+
+      `<td><button class="rowbtn" data-del="${i}">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  $('cnt').textContent=rows.length+'件';
+  tb.querySelectorAll('[data-seek]').forEach(s=>s.onclick=ev=>{ev.stopPropagation();if(vid.src)vid.currentTime=parseFloat(s.dataset.seek);});
+  tb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{rows.splice(+b.dataset.del,1);if(target>=rows.length)target=rows.length-1;refresh();});
+  tb.querySelectorAll('td.ed').forEach(td=>td.onclick=()=>{setTarget(+td.dataset.i);editCell(td);});
+}
+function unitsOf(r){const s=systems.find(x=>x.name===(r.sys||R.sysSel.value))||curSys();return s?s.units:[];}
+function candidates(r,kind){
+  const units=unitsOf(r),out=[];
+  if(kind==='unit'){units.forEach(u=>out.push({v:u.name,g:''}));return out;}
+  const head=units.filter(u=>u.name===r.unit),rest=units.filter(u=>u.name!==r.unit);
+  head.concat(rest).forEach(u=>u.elems.forEach(e=>out.push({v:e,g:u.name,unit:u.name})));
+  return out;
+}
+/* 隣のセルへ移動して編集状態にする */
+function editNeighbor(i,k,dir){
+  const n=NAVK.indexOf(k);if(n<0)return;
+  const nk=NAVK[n+dir];if(!nk)return;
+  const td=$('tbody').querySelector(`td[data-i="${i}"][data-k="${nk}"]`);
+  if(td){setTarget(i);editCell(td);}
+}
+function editCell(td){
+  if(td.querySelector('input'))return;
+  const i=+td.dataset.i,k=td.dataset.k,typ=td.dataset.t,r=rows[i];
+  const isPick=(k==='unit'||k==='elem');
+  const isTime=typ==='time';
+  const canNav=NAVK.includes(k);
+  const raw=isTime?(r[k]==null?'':fmtRel(r[k])):(r[k]??'');
+  td.innerHTML=`<div class="cellbox"><input type="text" value="${esc(raw)}" autocomplete="off"></div>`;
+  const box=td.querySelector('.cellbox'),inp=box.querySelector('input');
+  inp.focus();inp.select();
+
+  if(!isPick){
+    const done=save=>{
+      if(save){
+        if(isTime){const v=parseRel(inp.value);
+          if(v!=null){const wasOpen=(k==='end'&&r.end==null);r[k]=v;if(wasOpen){target=i;rows.push(newRow(v));}}}
+        else{r[k]=inp.value;loadFields(rows[target]);}
+      }
+      refresh();};
+    inp.onblur=()=>done(true);
+    inp.onkeydown=e=>{
+      e.stopPropagation();
+      if(e.key==='Enter'){e.preventDefault();inp.blur();return;}
+      if(e.key==='Escape'){e.preventDefault();inp.onblur=null;done(false);return;}
+      if(canNav&&e.key==='Tab'){e.preventDefault();inp.onblur=null;done(true);editNeighbor(i,k,e.shiftKey?-1:1);return;}
+      if(canNav&&e.key==='ArrowRight'&&inp.selectionStart===inp.value.length&&inp.selectionStart===inp.selectionEnd){
+        e.preventDefault();inp.onblur=null;done(true);editNeighbor(i,k,1);return;}
+      if(canNav&&e.key==='ArrowLeft'&&inp.selectionStart===0&&inp.selectionEnd===0){
+        e.preventDefault();inp.onblur=null;done(true);editNeighbor(i,k,-1);return;}
+    };
+    return;
+  }
+
+  /* --- 絞り込み候補つき（単位作業・要素作業） --- */
+  const all=candidates(r,k);
+  let list=[],sel=0,pop=null;
+  const place=()=>{
+    if(!pop)return;
+    const rc=inp.getBoundingClientRect(),vh=window.innerHeight;
+    const below=vh-rc.bottom-8, above=rc.top-8;
+    const up=below<150&&above>below;
+    pop.style.maxHeight=Math.max(90,Math.min(260,up?above:below))+'px';
+    pop.style.left=Math.min(rc.left,window.innerWidth-200)+'px';
+    pop.style.minWidth=Math.max(180,rc.width)+'px';
+    if(up){pop.style.top='auto';pop.style.bottom=(vh-rc.top+2)+'px';}
+    else{pop.style.bottom='auto';pop.style.top=(rc.bottom+2)+'px';}
+  };
+  const render=()=>{
+    const q=inp.value.trim();
+    list=q?all.filter(o=>o.v.startsWith(q)):all.slice();
+    if(q&&!list.length)list=all.filter(o=>o.v.includes(q));
+    if(!pop){
+      pop=document.createElement('div');pop.className='sugg';
+      document.body.appendChild(pop);
+      window.addEventListener('scroll',place,true);
+      window.addEventListener('resize',place);
+    }
+    if(!list.length){pop.innerHTML='<div class="hd">候補なし（そのまま入力できます）</div>';place();return;}
+    sel=Math.min(sel,list.length-1);
+    pop.innerHTML=list.map((o,n)=>`<div class="${n===sel?'on':''}" data-n="${n}">${esc(o.v)}${o.g?`<span class="g">${esc(o.g)}</span>`:''}</div>`).join('');
+    pop.querySelectorAll('[data-n]').forEach(dv=>{dv.onmousedown=ev=>{ev.preventDefault();choose(+dv.dataset.n);};});
+    place();
+    const on=pop.querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
+  };
+  const close=()=>{
+    if(pop){pop.remove();pop=null;
+      window.removeEventListener('scroll',place,true);
+      window.removeEventListener('resize',place);}
+  };
+  let fixed=false;                       /* 二重確定を防ぐ */
+  const commit=txt=>{
+    if(fixed)return;
+    fixed=true;inp.onblur=null;
+    if(k==='unit')r.unit=txt;
+    else{r.elem=txt;const hit=all.find(o=>o.v===txt);if(hit&&hit.unit)r.unit=hit.unit;}
+    close();refresh();
+  };
+  const choose=n=>{const o=list[n];if(o)commit(o.v);else commit(inp.value.trim());};
+  inp.oninput=()=>{sel=0;render();};
+  inp.onblur=()=>{close();commit(inp.value.trim());};
+  inp.onkeydown=e=>{
+    e.stopPropagation();
+    if(e.key==='ArrowDown'){e.preventDefault();if(list.length){sel=(sel+1)%list.length;render();}return;}
+    if(e.key==='ArrowUp'){e.preventDefault();if(list.length){sel=(sel-1+list.length)%list.length;render();}return;}
+    if(e.key==='Enter'){e.preventDefault();inp.onblur=null;
+      if(list.length)choose(sel);else commit(inp.value.trim());return;}
+    if(e.key==='Escape'){e.preventDefault();fixed=true;inp.onblur=null;close();refresh();return;}
+    if(e.key==='Tab'){e.preventDefault();inp.onblur=null;
+      if(list.length)choose(sel);else commit(inp.value.trim());
+      editNeighbor(i,k,e.shiftKey?-1:1);return;}
+    if(e.key==='ArrowRight'&&inp.selectionStart===inp.value.length&&inp.selectionStart===inp.selectionEnd){
+      e.preventDefault();inp.onblur=null;
+      if(list.length)choose(sel);else commit(inp.value.trim());
+      editNeighbor(i,k,1);return;}
+    if(e.key==='ArrowLeft'&&inp.selectionStart===0&&inp.selectionEnd===0){
+      e.preventDefault();inp.onblur=null;
+      if(list.length)choose(sel);else commit(inp.value.trim());
+      editNeighbor(i,k,-1);return;}
+  };
+  render();
+}
+function sortRows(){const t=rows[target];rows.sort((a,b)=>a.start-b.start);target=t?rows.indexOf(t):-1;refresh();toast('並べ替えました');}
+function clearAll(){if(!rows.length)return;if(confirm('記録をすべて消去します。よろしいですか？')){rows=[];target=-1;clearFields();refresh();}}
+
+/* ================= 集計 ================= */
+function renderSummary(){
+  const done=rows.filter(r=>r.end!=null);
+  const total=done.reduce((s,r)=>s+(r.end-r.start),0);
+  const g=f=>{const m=new Map();
+    done.forEach(r=>{const k=f(r);const o=m.get(k)||{n:0,s:0};o.n++;o.s+=(r.end-r.start);m.set(k,o);});
+    return [...m.entries()].sort((a,b)=>b[1].s-a[1].s);};
+  const bar=p=>`<td><div class="bar" style="width:${Math.max(2,p*70)}px"></div></td>`;
+  $('sumUnit').innerHTML=g(r=>r.unit||'（未入力）').map(([k,v])=>{const p=total?v.s/total:0;
+    return `<tr><td>${esc(k)}</td><td class="num">${v.n}</td><td class="num">${v.s.toFixed(1)}</td><td class="num">${(v.s/v.n).toFixed(1)}</td><td class="num">${(p*100).toFixed(1)}%</td>${bar(p)}</tr>`;}).join('');
+  $('sumElem').innerHTML=g(r=>(r.unit||'（未入力）')+'\u0001'+(r.elem||'（未入力）')).map(([k,v])=>{
+    const[u,e]=k.split('\u0001'),p=total?v.s/total:0;
+    return `<tr><td style="color:var(--fg-dim)">${esc(u)}</td><td>${esc(e)}</td><td class="num">${v.n}</td><td class="num">${v.s.toFixed(1)}</td><td class="num">${(v.s/v.n).toFixed(1)}</td><td class="num">${(p*100).toFixed(1)}%</td>${bar(p)}</tr>`;}).join('');
+  const miss=done.filter(r=>!r.elem).length;
+  $('sumTotal').textContent=done.length
+    ?`確定 ${done.length} 区間 ／ 合計 ${total.toFixed(1)} 秒（${(total/60).toFixed(1)} 分）`+(miss?`　※ 要素作業 未入力 ${miss} 件`:'')
+    :'確定した区間がありません。';
+}
+
+/* ================= 動画 ================= */
+function loadVideo(file){
+  if(vid.src)URL.revokeObjectURL(vid.src);
+  vid.src=URL.createObjectURL(file);
+  vid.style.display='block';R.drop.style.display='none';
+  videoMtime=file.lastModified?new Date(file.lastModified):null;
+  R.mtimeInfo.innerHTML=videoMtime
+    ?`ファイル：${esc(file.name)}<br>更新日時：<strong>${fmtDateTime(videoMtime)}</strong>`
+    :`ファイル：${esc(file.name)}<br>更新日時は取得できませんでした。`;
+  const pend=resumePending;
+  lastVideoName=file.name;resumePending=null;R.resumeBar.classList.remove('show');
+  vid.onerror=()=>{toast('この形式は再生できません（MP4/MOV/WebM をお使いください）',1);
+    vid.style.display='none';R.drop.style.display='flex';};
+  vid.onloadedmetadata=()=>{
+    R.seekbar.max=vid.duration||0;
+    if(pend&&pend.pos>0){
+      if(pend.name&&pend.name!==file.name&&
+         !confirm(`前回とファイル名が違います。\n前回：${pend.name}\n今回：${file.name}\n\nそれでも中断位置（${fmtRel(pend.pos)}）へ移動しますか？`))return;
+      vid.currentTime=Math.min(pend.pos,vid.duration||pend.pos);
+      toast('中断位置 '+fmtRel(pend.pos)+' へ移動しました');
+    }
+  };
+  toast('動画を読み込みました');
+}
+R.drop.onclick=()=>R.fileIn.click();
+R.btnPick.onclick=()=>R.fileIn.click();
+R.btnResume.onclick=()=>R.fileIn.click();
+R.fileIn.onchange=e=>{if(e.target.files[0])loadVideo(e.target.files[0]);e.target.value='';};
+['dragenter','dragover'].forEach(ev=>R.drop.addEventListener(ev,e=>{e.preventDefault();R.drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>R.drop.addEventListener(ev,e=>{e.preventDefault();R.drop.classList.remove('over');}));
+R.drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)loadVideo(f);});
+
+vid.addEventListener('play',()=>R.btnPlay.textContent='❚❚ 一時停止');
+vid.addEventListener('pause',()=>R.btnPlay.textContent='▶ 再生');
+function togglePlay(){if(!vid.src)return;vid.paused?vid.play():vid.pause();}
+function step(d){if(!vid.src)return;vid.currentTime=Math.max(0,Math.min(vid.duration||0,vid.currentTime+d));}
+R.btnPlay.onclick=togglePlay;
+videoCard.querySelectorAll('.stp').forEach(b=>b.onclick=()=>step(parseFloat(b.dataset.d)));
+videoCard.querySelectorAll('.spd').forEach(b=>b.onclick=()=>{
+  vid.playbackRate=parseFloat(b.dataset.s);
+  videoCard.querySelectorAll('.spd').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
+R.seekbar.addEventListener('input',e=>{if(vid.src)vid.currentTime=parseFloat(e.target.value);});
+R.btnCut.onclick=cut;R.btnEnd.onclick=endObs;R.btnCancel.onclick=cancelSeg;
+
+R.sysSel.onchange=()=>{renderCodes();autosave();};
+R.btnKeep.onclick=()=>{keepAttr=!keepAttr;
+  R.btnKeep.textContent='確定後も属性を保持：'+(keepAttr?'ON':'OFF');
+  R.btnKeep.classList.toggle('on',keepAttr);autosave();};
+R.btnEditMst.onclick=()=>{window.focus();$('cardMst').classList.remove('collapsed');
+  mstIdx=Math.max(0,systems.findIndex(s=>s.name===R.sysSel.value));
+  renderMaster();$('cardMst').scrollIntoView({behavior:'smooth',block:'start'});};
+
+R.btnTimeCfg.onclick=()=>R.timeCfg.classList.toggle('show');
+R.btnTimeClose.onclick=()=>R.timeCfg.classList.remove('show');
+R.baseInput.addEventListener('change',e=>{baseMs=e.target.value?new Date(e.target.value).getTime():null;renderTable();autosave();});
+R.btnApplySync.onclick=()=>{
+  const v=R.syncInput.value;
+  if(!v){toast('同期点の実時刻を入力してください',1);return;}
+  if(!vid.src){toast('先に動画を読み込んでください',1);return;}
+  baseMs=new Date(v).getTime()-nowT()*1000;
+  R.baseInput.value=localIso(new Date(baseMs));renderTable();autosave();
+  R.timeCfg.classList.remove('show');
+  toast('動画開始時刻を '+fmtDateTime(new Date(baseMs))+' に設定');};
+R.btnApplyMtime.onclick=()=>{
+  if(!videoMtime||!vid.duration){toast('更新日時または動画長が取得できません',1);return;}
+  baseMs=videoMtime.getTime()-vid.duration*1000;
+  R.baseInput.value=localIso(new Date(baseMs));renderTable();autosave();
+  toast('概算で設定：'+fmtDateTime(new Date(baseMs)));};
+
+function tick(){
+  const t=nowT();
+  R.tcRel.textContent=fmtRel(t);R.tcRelSec.textContent=t.toFixed(1)+' s';
+  const a=absOf(t);
+  if(a){R.tcAbsBox.classList.remove('unset');R.tcAbs.textContent=fmtClockMs(a);
+    R.tcAbsNote.textContent='動画開始 '+fmtDateTime(new Date(baseMs));}
+  else{R.tcAbsBox.classList.add('unset');R.tcAbs.textContent='--:--:--';R.tcAbsNote.textContent='動画開始時刻が未設定';}
+  if(R.seekbar.ownerDocument.activeElement!==R.seekbar)R.seekbar.value=t;
+  if(openIdx()>=0)renderLive();
+  R.syncNow.textContent=vid.src?'現在位置：'+fmtRel(t):'';
+  if(vid.src&&Math.abs(t-lastPos)>1){lastPos=t;autosave();}
+}
+setInterval(tick,100);
+
+/* ================= 別窓 ================= */
+function openPop(){
+  if(popWin&&!popWin.closed){popWin.focus();return;}
+  const feat=`popup=yes,width=${popGeom.w},height=${popGeom.h}`+(popGeom.x!=null?`,left=${popGeom.x},top=${popGeom.y}`:'');
+  const w=window.open('','wsPlayer',feat);
+  if(!w){toast('ポップアップがブロックされました。許可してください',1);return;}
+  popWin=w;
+  const css=document.getElementById('appcss').textContent;
+  w.document.open();
+  w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8">'+
+    '<title>動画 — 要素作業ビデオ起こし</title><style>'+css+'</style></head>'+
+    '<body class="popbody"><div id="slot" style="height:100%"></div></body></html>');
+  w.document.close();
+  const t=vid.currentTime||0,playing=!vid.paused;
+  w.document.getElementById('slot').appendChild(videoCard);
+  if(vid.src){try{vid.currentTime=t;if(playing)vid.play();}catch(e){}}
+  studio.classList.add('solo');
+  w.document.addEventListener('keydown',onKey);
+  w.addEventListener('pagehide',closePop);
+  w.addEventListener('beforeunload',closePop);
+  R.btnPop.style.display='none';R.btnUnpop.style.display='';
+  const loop=()=>{if(!popWin||popWin.closed)return;tick();popWin.requestAnimationFrame(loop);};
+  w.requestAnimationFrame(loop);
+  clearInterval(window._geo);
+  window._geo=setInterval(()=>{
+    if(!popWin||popWin.closed){clearInterval(window._geo);return;}
+    try{popGeom={w:popWin.outerWidth,h:popWin.outerHeight,x:popWin.screenX,y:popWin.screenY};}catch(e){}
+  },2000);
+  toast('動画を別窓に切り出しました');
+}
+function closePop(){
+  if(videoCard.ownerDocument!==document){
+    const t=vid.currentTime||0,playing=!vid.paused;
+    studio.insertBefore(videoCard,studio.firstChild);
+    if(vid.src){try{vid.currentTime=t;if(playing)vid.play();}catch(e){}}
+  }
+  studio.classList.remove('solo');
+  R.btnPop.style.display='';R.btnUnpop.style.display='none';
+  if(popWin&&!popWin.closed){const w=popWin;popWin=null;try{w.close();}catch(e){}}
+  popWin=null;clearInterval(window._geo);
+}
+R.btnPop.onclick=openPop;R.btnUnpop.onclick=closePop;
+window.addEventListener('beforeunload',()=>{if(popWin&&!popWin.closed)try{popWin.close();}catch(e){}});
+setInterval(()=>{if(popWin&&popWin.closed)closePop();},600);
+
+/* ================= キーボード ================= */
+function onKey(e){
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select')return;
+  if(e.ctrlKey||e.metaKey)return;
+  if(e.key==='Enter'){e.preventDefault();cut();return;}
+  if(e.code==='Space'){e.preventDefault();togglePlay();return;}
+  if(e.key==='ArrowLeft'){e.preventDefault();step(e.shiftKey?-0.1:e.altKey?-10:-1);return;}
+  if(e.key==='ArrowRight'){e.preventDefault();step(e.shiftKey?0.1:e.altKey?10:1);return;}
+  if(e.key==='Escape'){e.preventDefault();endObs();return;}
+  const k=e.key.toUpperCase();
+  if(keymap[k]){e.preventDefault();label(keymap[k].unit,keymap[k].elem);}
+}
+document.addEventListener('keydown',onKey);
+
+/* ================= マスタ編集 ================= */
+function dupCheck(sys){
+  const seen=new Map(),dup=new Set();
+  sys.units.forEach(u=>u.elems.forEach(e=>{
+    const n=e.trim();if(!n)return;
+    if(seen.has(n))dup.add(n);else seen.set(n,u.name);}));
+  return dup;
+}
+function renderMaster(){
+  mstIdx=Math.min(Math.max(0,mstIdx),Math.max(0,systems.length-1));
+  const sel=$('mstSysSel');
+  sel.innerHTML=systems.map((s,i)=>`<option value="${i}">${esc(s.name)}</option>`).join('');
+  sel.value=mstIdx;
+  const sys=systems[mstIdx];
+  $('mstSysName').value=sys?sys.name:'';$('mstSysName').disabled=!sys;
+  if(!sys){$('mstUnits').innerHTML='<div class="hint">作業システムがありません。</div>';return;}
+  const dup=dupCheck(sys),wv=$('dupWarn');
+  if(dup.size){wv.textContent='要素作業名が重複しています：'+[...dup].join('、')+'　（同一システム内では重複させないでください）';wv.classList.add('show');}
+  else wv.classList.remove('show');
+  $('mstUnits').innerHTML=sys.units.map((u,ui)=>`
+    <div class="ubox"><div class="uhead">
+      <input type="text" value="${esc(u.name)}" data-un="${ui}" placeholder="単位作業名">
+      <button class="btn xs" data-umv="${ui}" data-d="-1">↑</button>
+      <button class="btn xs" data-umv="${ui}" data-d="1">↓</button>
+      <button class="btn xs danger" data-udel="${ui}">単位作業を削除</button>
+    </div><div class="ebox">
+      ${u.elems.map((e,ei)=>`<span class="echip${dup.has(e.trim())?' dup':''}"><input type="text" value="${esc(e)}" data-en="${ui}_${ei}"><button class="x" data-edel="${ui}_${ei}">✕</button></span>`).join('')}
+      <button class="btn xs" data-eadd="${ui}">＋ 要素作業</button>
+    </div></div>`).join('');
+  const M=$('mstUnits');
+  M.querySelectorAll('[data-un]').forEach(i=>i.oninput=()=>{sys.units[+i.dataset.un].name=i.value;renderCodes();autosave();});
+  M.querySelectorAll('[data-en]').forEach(i=>{
+    i.oninput=()=>{const[a,b]=i.dataset.en.split('_').map(Number);sys.units[a].elems[b]=i.value;renderCodes();autosave();};
+    i.onblur=()=>renderMaster();});
+  M.querySelectorAll('[data-edel]').forEach(b=>b.onclick=()=>{const[a,c]=b.dataset.edel.split('_').map(Number);sys.units[a].elems.splice(c,1);renderMaster();renderCodes();autosave();});
+  M.querySelectorAll('[data-eadd]').forEach(b=>b.onclick=()=>{const ui=+b.dataset.eadd;sys.units[ui].elems.push('新しい要素作業');renderMaster();renderCodes();autosave();
+    const l=$('mstUnits').querySelectorAll(`[data-en^="${ui}_"]`);const last=l[l.length-1];if(last){last.focus();last.select();}});
+  M.querySelectorAll('[data-udel]').forEach(b=>b.onclick=()=>{const ui=+b.dataset.udel;
+    if(confirm(`単位作業「${sys.units[ui].name}」を要素作業ごと削除します。よろしいですか？`)){sys.units.splice(ui,1);renderMaster();renderCodes();autosave();}});
+  M.querySelectorAll('[data-umv]').forEach(b=>b.onclick=()=>{const ui=+b.dataset.umv,d=+b.dataset.d,ni=ui+d;
+    if(ni<0||ni>=sys.units.length)return;[sys.units[ui],sys.units[ni]]=[sys.units[ni],sys.units[ui]];renderMaster();renderCodes();autosave();});
+}
+$('mstSysSel').onchange=e=>{mstIdx=+e.target.value;renderMaster();};
+$('mstSysName').oninput=e=>{const old=systems[mstIdx].name,wasSel=R.sysSel.value===old;
+  systems[mstIdx].name=e.target.value;buildSysSel();
+  if(wasSel)R.sysSel.value=e.target.value;
+  $('mstSysSel').options[mstIdx].textContent=e.target.value;renderCodes();autosave();};
+function sysAdd(){systems.push({name:'新しい作業システム',units:[{name:'単位作業1',elems:['要素作業1']}]});
+  mstIdx=systems.length-1;buildSysSel();renderMaster();renderCodes();autosave();$('mstSysName').focus();$('mstSysName').select();}
+function sysDup(){if(!systems[mstIdx])return;const c=clone(systems[mstIdx]);c.name+='（複製）';
+  systems.splice(mstIdx+1,0,c);mstIdx++;buildSysSel();renderMaster();renderCodes();autosave();$('mstSysName').focus();$('mstSysName').select();}
+function sysDel(){if(!systems[mstIdx])return;
+  if(!confirm(`作業システム「${systems[mstIdx].name}」を削除します。よろしいですか？\n（記録済みのデータは消えません）`))return;
+  systems.splice(mstIdx,1);if(mstIdx>=systems.length)mstIdx=systems.length-1;buildSysSel();renderMaster();renderCodes();autosave();}
+function sysMove(d){const ni=mstIdx+d;if(ni<0||ni>=systems.length)return;
+  [systems[mstIdx],systems[ni]]=[systems[ni],systems[mstIdx]];mstIdx=ni;buildSysSel();renderMaster();autosave();}
+function sysUp(){sysMove(-1);}function sysDown(){sysMove(1);}
+function unitAdd(){if(!systems[mstIdx]){toast('先に作業システムを追加してください',1);return;}
+  systems[mstIdx].units.push({name:'新しい単位作業',elems:[]});renderMaster();renderCodes();autosave();
+  const l=$('mstUnits').querySelectorAll('[data-un]');const last=l[l.length-1];if(last){last.focus();last.select();}}
+function toTsv(){const o=[];systems.forEach(s=>s.units.forEach(u=>{
+  if(!u.elems.length)o.push([s.name,u.name,''].join('\t'));
+  u.elems.forEach(e=>o.push([s.name,u.name,e].join('\t')));}));return o.join('\n');}
+function loadTsv(){$('mstText').value=toTsv();toast('現在の内容を書き出しました');}
+function splitCsvLine(line){
+  if(line.includes('\t'))return line.split('\t');
+  const out=[];let cur='',q=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}
+    else{if(c==='"')q=true;else if(c===','){out.push(cur);cur='';}else cur+=c;}
+  }
+  out.push(cur);return out;
+}
+function parseMasterText(txt){
+  const map=new Map();
+  txt.split(/\r?\n/).forEach((line,idx)=>{
+    if(!line.trim())return;
+    const p=splitCsvLine(line);
+    if(idx===0&&/作業システム/.test(p[0]||''))return;
+    const s=(p[0]||'（未分類）').trim(),u=(p[1]||'（未分類）').trim(),e=(p[2]||'').trim();
+    if(!map.has(s))map.set(s,new Map());
+    const um=map.get(s);if(!um.has(u))um.set(u,[]);
+    if(e)um.get(u).push(e);});
+  if(!map.size)return null;
+  return [...map.entries()].map(([sn,um])=>({name:sn,units:[...um.entries()].map(([un,el])=>({name:un,elems:el}))}));
+}
+function applyTsv(){
+  const s=parseMasterText($('mstText').value);
+  if(!s){toast('読み取れる行がありません',1);return;}
+  systems=s;mstIdx=0;buildSysSel();renderMaster();renderCodes();autosave();toast('作業区分を反映しました');}
+function resetMaster(){if(!confirm('作業区分を初期値に戻します。よろしいですか？'))return;
+  systems=clone(DEFAULT_SYSTEMS);mstIdx=0;buildSysSel();renderMaster();renderCodes();autosave();}
+function saveMaster(){const b=new Blob([JSON.stringify({type:'workstudy-master',v:1,systems},null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='作業区分_'+stamp()+'.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function saveMasterCsv(){
+  const lines=[['作業システム','単位作業','要素作業'].map(csvCell).join(',')];
+  systems.forEach(s=>s.units.forEach(u=>{
+    if(!u.elems.length)lines.push([s.name,u.name,''].map(csvCell).join(','));
+    u.elems.forEach(e=>lines.push([s.name,u.name,e].map(csvCell).join(',')));}));
+  download('作業区分_'+stamp()+'.csv',lines.join('\r\n'));toast('作業区分をCSVで保存しました');}
+$('mstCsvIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{const s=parseMasterText(String(rd.result).replace(/^\uFEFF/,''));
+    if(!s){toast('読み取れる行がありません',1);return;}
+    systems=s;mstIdx=0;buildSysSel();renderMaster();renderCodes();autosave();toast('作業区分を読み込みました');};
+  rd.readAsText(f);e.target.value='';};
+$('mstIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const o=JSON.parse(rd.result);if(!o.systems)throw 0;
+    systems=o.systems;mstIdx=0;buildSysSel();renderMaster();renderCodes();autosave();toast('作業区分を読み込みました');
+  }catch(err){toast('読み込めませんでした',1);}};rd.readAsText(f);e.target.value='';};
+
+/* ================= 出力 ================= */
+function csvCell(v){v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function download(name,text){const b=new Blob(["\uFEFF"+text],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function headVals(){return {調査日:$('h_date').value,調査地名:$('h_site').value,林小班:$('h_stand').value,
+  機械:$('h_machine').value,操作者:$('h_operator').value,記録者:$('h_recorder').value,
+  天候:$('h_weather').value,備考:$('h_note').value};}
+function expDetail(){
+  const done=rows.filter(r=>r.end!=null);
+  if(!done.length){toast('確定した区間がありません',1);return;}
+  const h=headVals(),hk=Object.keys(h);
+  const cols=[...hk,'No','作業システム','単位作業','要素作業','処理対象1','処理対象2','処理対象3','コメント',
+    '開始相対(s)','終了相対(s)','開始相対','終了相対','開始時刻','終了時刻','所要時間(s)'];
+  const lines=[cols.map(csvCell).join(',')];
+  done.forEach((r,i)=>lines.push([...hk.map(k=>h[k]),i+1,r.sys||'',r.unit,r.elem,r.t1,r.t2,r.t3,r.cmt,
+    r.start.toFixed(2),r.end.toFixed(2),fmtRel(r.start),fmtRel(r.end),
+    fmtClock(absOf(r.start)),fmtClock(absOf(r.end)),(r.end-r.start).toFixed(1)].map(csvCell).join(',')));
+  download('要素作業明細_'+stamp()+'.csv',lines.join('\r\n'));toast('明細CSVを保存しました');}
+function expSummary(){
+  const done=rows.filter(r=>r.end!=null);
+  if(!done.length){toast('確定した区間がありません',1);return;}
+  const total=done.reduce((s,r)=>s+(r.end-r.start),0),m=new Map();
+  done.forEach(r=>{const k=(r.sys||'')+'\u0001'+r.unit+'\u0001'+r.elem;
+    const o=m.get(k)||{n:0,s:0};o.n++;o.s+=(r.end-r.start);m.set(k,o);});
+  const lines=[['作業システム','単位作業','要素作業','回数','合計時間(s)','平均時間(s)','構成比(%)'].join(',')];
+  [...m.entries()].sort((a,b)=>b[1].s-a[1].s).forEach(([k,v])=>{const[s,u,e]=k.split('\u0001');
+    lines.push([s,u,e,v.n,v.s.toFixed(1),(v.s/v.n).toFixed(1),(v.s/total*100).toFixed(2)].map(csvCell).join(','));});
+  lines.push(['合計','','',done.length,total.toFixed(1),'','100'].join(','));
+  download('要素作業集計_'+stamp()+'.csv',lines.join('\r\n'));toast('集計CSVを保存しました');}
+
+function sessionObj(){return {v:7,head:headVals(),sys:R.sysSel.value,baseMs,systems,rows,target,
+  lastVideoName,lastPos,popGeom,keepAttr,showCodes,rowsShown};}
+function saveJson(){const b=new Blob([JSON.stringify(sessionObj(),null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=(lastVideoName?lastVideoName.replace(/\.[^.]+$/,''):'作業記録')+'_'+stamp()+'.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+$('jsonIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{restore(JSON.parse(rd.result));toast('読み込みました');}catch(err){toast('読み込めませんでした',1);}};
+  rd.readAsText(f);e.target.value='';};
+function restore(o){
+  if(o.systems&&o.systems.length)systems=o.systems;
+  buildSysSel();
+  if(o.head){const map={調査日:'h_date',調査地名:'h_site',林小班:'h_stand',機械:'h_machine',
+    操作者:'h_operator',記録者:'h_recorder',天候:'h_weather',備考:'h_note'};
+    Object.entries(o.head).forEach(([k,v])=>{if(map[k])$(map[k]).value=v||'';});}
+  if(o.sys&&systems.some(s=>s.name===o.sys))R.sysSel.value=o.sys;
+  baseMs=o.baseMs??null;
+  R.baseInput.value=baseMs!=null?localIso(new Date(baseMs)):'';
+  rows=(o.rows||[]).map(r=>{const{mat,...rest}=r;return rest;});
+  target=(o.target!=null&&o.target<rows.length)?o.target:-1;
+  if(o.keepAttr!=null){keepAttr=o.keepAttr;
+    R.btnKeep.textContent='確定後も属性を保持：'+(keepAttr?'ON':'OFF');
+    R.btnKeep.classList.toggle('on',keepAttr);}
+  if(o.showCodes!=null){showCodes=o.showCodes;
+    R.btnShowCodes.textContent='入力パネル：'+(showCodes?'表示':'非表示');
+    R.btnShowCodes.classList.toggle('on',showCodes);}
+  if(o.rowsShown){rowsShown=o.rowsShown;applyRowsHeight();}
+  loadFields(rows[target]);
+  if(o.popGeom)popGeom=o.popGeom;
+  lastVideoName=o.lastVideoName||null;lastPos=o.lastPos||0;
+  if(lastVideoName){
+    resumePending={name:lastVideoName,pos:lastPos};
+    R.resumeName.textContent=lastVideoName;
+    const done=rows.filter(r=>r.end!=null);
+    const last=done.length?done[done.length-1].end:0;
+    R.resumePos.textContent='最後の記録 '+fmtRel(last)+(absOf(last)?'（'+fmtClock(absOf(last))+'）':'')+'　／ 中断位置 '+fmtRel(lastPos);
+    R.resumeBar.classList.add('show');
+  }
+  mstIdx=0;renderMaster();refresh();
+}
+
+/* ================= 自動保存 =================
+   保存先の優先順位：
+     1) localStorage … ブラウザ標準。ダウンロードして使う場合・GitHub Pages で開く場合
+     2) window.storage … claude.ai 上で開いた場合
+     3) どちらも使えなければ自動保存なし（作業ファイルの手動保存で対応）           */
+const SKEY=(()=>{
+  let f='';
+  try{f=decodeURIComponent(location.pathname.split('/').pop()||'');}catch(e){f=location.pathname;}
+  return 'workstudy:session:'+(f||'default');
+})();
+const store={mode:'none',
+  async init(){
+    try{const t=SKEY+':t';window.localStorage.setItem(t,'1');window.localStorage.removeItem(t);
+      this.mode='local';return;}catch(e){}
+    if(window.storage){this.mode='host';return;}
+    this.mode='none';
+  },
+  async set(v){
+    if(this.mode==='local'){try{window.localStorage.setItem(SKEY,v);}catch(e){
+      $('autoStat').innerHTML='<span style="color:var(--danger)">自動保存の容量が足りません。作業ファイルを手動で保存してください。</span>';}return;}
+    if(this.mode==='host'){try{await window.storage.set(SKEY,v);}catch(e){}}
+  },
+  async get(){
+    if(this.mode==='local'){try{return window.localStorage.getItem(SKEY);}catch(e){return null;}}
+    if(this.mode==='host'){try{const r=await window.storage.get(SKEY);return r&&r.value;}catch(e){return null;}}
+    return null;
+  }
+};
+let saveTimer=null,storeReady=false;
+function autosave(){
+  if(!storeReady)return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{store.set(JSON.stringify(sessionObj()));},700);
+}
+(async function(){
+  await store.init();
+  storeReady=true;
+  $('autoStat').textContent = store.mode==='local'
+    ? '自動保存：このブラウザに保存しています（別のPC・別のブラウザには引き継がれません）。'
+    : store.mode==='host'
+      ? '自動保存：有効です。'
+      : '自動保存は使えません。作業ファイルをこまめに保存してください。';
+  try{
+    const v=await store.get();
+    if(v){const o=JSON.parse(v);
+      if((o.rows&&o.rows.length)||(o.systems&&o.systems.length)){restore(o);toast('前回の内容を復元しました');}}
+  }catch(e){}
+})();
+
+/* ================= 起動 ================= */
+buildSysSel();renderMaster();applyRowsHeight();refresh();
+$('h_date').value=localIso(new Date()).slice(0,10);
+</script>
