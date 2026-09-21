@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>要素作業時間 ビデオ起こし｜ダウンロード</title>
+<style>
+  :root{
+    --paper:#EEF2EF;   /* 薄い灰緑：林内の曇天光 */
+    --ink:#1E2B27;     /* 深い針葉樹の緑 */
+    --ink-soft:#4A5C56;
+    --rule:#C9D3CE;
+    --hivis:#E8741A;   /* 防護衣・チェーンソーの安全色 */
+    --hivis-dark:#B9570B;
+    --white:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Yu Gothic",Meiryo,"Noto Sans JP",sans-serif;
+    font-size:16px;line-height:1.85;padding-bottom:env(safe-area-inset-bottom,0)}
+  .page{max-width:44rem;margin:0 auto;padding:3.5rem 1.4rem 4rem}
+
+  header{border-left:6px solid var(--hivis);padding-left:1.1rem;margin-bottom:2.6rem}
+  h1{font-size:clamp(1.7rem,4.6vw,2.3rem);line-height:1.35;margin:0 0 .5rem;font-weight:700;letter-spacing:.02em}
+  .lead{margin:0;color:var(--ink-soft);max-width:34em}
+
+  h2{font-size:1.1rem;margin:2.6rem 0 1rem;font-weight:700;letter-spacing:.04em}
+
+  .dl{display:grid;gap:.8rem}
+  .dl a{display:flex;align-items:center;gap:1rem;text-decoration:none;color:var(--ink);
+    background:var(--white);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.15rem;
+    transition:border-color .15s,box-shadow .15s}
+  .dl a:hover{border-color:var(--hivis);box-shadow:0 2px 0 var(--hivis)}
+  .dl a:focus-visible{outline:3px solid var(--hivis);outline-offset:3px}
+  .dl .ic{flex:0 0 auto;width:2.6rem;height:2.6rem;border-radius:6px;display:grid;place-items:center;
+    font-weight:700;font-size:.78rem;color:var(--white)}
+  .dl .ic.html{background:var(--hivis)}
+  .dl .ic.csv{background:var(--ink)}
+  .dl .t{font-weight:700;display:block}
+  .dl .s{font-size:.86rem;color:var(--ink-soft);display:block;word-break:break-all}
+  .dl .go{margin-left:auto;font-size:.88rem;color:var(--hivis-dark);font-weight:700;white-space:nowrap}
+
+  ol.steps{padding-left:1.4rem;margin:0}
+  ol.steps li{margin-bottom:.55rem;padding-left:.2rem}
+  ol.steps li::marker{color:var(--hivis-dark);font-weight:700}
+
+  .note{background:var(--white);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.2rem}
+  .note ul{margin:0;padding-left:1.2rem}
+  .note li{margin-bottom:.4rem}
+  .note li:last-child{margin-bottom:0}
+
+  footer{margin-top:3rem;padding-top:1.2rem;border-top:1px solid var(--rule);font-size:.84rem;color:var(--ink-soft)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>要素作業時間 ビデオ起こし</h1>
+    <p class="lead">林業機械作業を撮影した動画を見ながら、要素作業ごとの開始・終了時刻を記録し、Excel で集計できる形に書き出すツールです。インストールは不要で、ブラウザで開くだけで使えます。</p>
+  </header>
+
+  <h2>ダウンロード</h2>
+  <div class="dl">
+    <a id="dlTool" href="#">
+      <span class="ic html">HTML</span>
+      <span><span class="t">ツール本体</span><span class="s" id="nmTool"></span></span>
+      <span class="go">ダウンロード</span>
+    </a>
+    <a id="dlCsv" href="#">
+      <span class="ic csv">CSV</span>
+      <span><span class="t">作業区分の見本（チェーンソー伐木造材）</span><span class="s" id="nmCsv"></span></span>
+      <span class="go">ダウンロード</span>
+    </a>
+  </div>
+
+  <h2>使い始めるまで</h2>
+  <ol class="steps">
+    <li>上の2つのファイルを、同じフォルダに保存します。</li>
+    <li>ツール本体（HTML）を Chrome または Edge で開きます。ダブルクリックで開けない場合は、ブラウザの画面にファイルをドラッグしてください。</li>
+    <li>画面下部の［作業区分の編集］を開き、［CSVを読込］で見本の CSV を読み込みます。現場に合わせて作業区分を書き換え、［作業区分を保存（CSV）］で残しておくと次回から使えます。</li>
+    <li>［動画を選ぶ］で動画を読み込み、［観測開始］から記録を始めます。</li>
+  </ol>
+
+  <h2>注意</h2>
+  <div class="note">
+    <ul>
+      <li>再生できる動画は MP4・MOV・WebM です。古いビデオカメラの .mpg は、HandBrake などで MP4 に変換してから使ってください。</li>
+      <li>記録は同じPC・同じブラウザ内に自動保存されますが、別のPCやブラウザには引き継がれません。区切りのよいところで［作業ファイルを保存］を押し、動画と同じフォルダに残してください。</li>
+      <li>ツール本体のファイル名を変えると、それまでの自動保存は読み込まれなくなります（作業ファイルは影響を受けません）。</li>
+    </ul>
+  </div>
+
+  <footer>
+    本ツールは無保証です。利用は各自の責任でお願いします。
+  </footer>
+</div>
+
+<script>
+/* ===== リポジトリに置いた実際のファイル名に書き換えてください ===== */
+const FILES = {
+  tool: '要素作業時間ビデオ起こし.html',
+  csv:  '作業区分_チェーンソー伐木造材.csv'
+};
+/* ================================================================ */
+
+function setLink(aId, nameId, file){
+  const a=document.getElementById(aId);
+  a.href=encodeURIComponent(file);   // 日本語名もそのまま扱えるようにする
+  a.setAttribute('download', file);  // 開かずにダウンロードさせる
+  document.getElementById(nameId).textContent=file;
+}
+setLink('dlTool','nmTool',FILES.tool);
+setLink('dlCsv','nmCsv',FILES.csv);
+</script>
+</body>
+</html>
